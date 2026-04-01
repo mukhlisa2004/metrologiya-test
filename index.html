@@ -76,12 +76,10 @@
         background-color: #f8f9fa;
     }
 
-
     /* Yashirin bloklar uchun */
-.hidden {
-    display: none !important;
-}
-
+    .hidden {
+        display: none;
+    }
 </style>
 </head>
 <body>
@@ -102,15 +100,26 @@
         <button onclick="startTest()" style="background-color: #007bff; color: white; font-weight: bold;">Testni boshlash</button>
     </div>
 
-    <div id="admin-results" class="card hidden">
-    <h3>Talabalar natijalari</h3>
-    <div id="results-table-container">
-        Hozircha natija yo'q.
+    <div id="test-section" class="hidden">
+        <div id="timer" style="color: red; font-weight: bold; text-align: right;">Vaqt: 40:00</div>
+        <h3 id="question-text">Savollar yuklanmoqda...</h3>
+        <div id="options-container"></div>
+        <button id="next-btn" onclick="nextQuestion()" class="hidden" style="margin-top: 15px;">Keyingi savol</button>
     </div>
 </div>
-    
+        <button onclick="startTest()">Testni boshlash</button>
+        <div id="admin-results" class="hidden" style="margin-top: 20px;">
+    <h3 style="text-align: center;">Talabalar natijalari</h3>
+    <div id="results-table-container"></div>
 </div>
-</div>
+    </div>
+
+    <div id="test-section" class="hidden">
+        <div id="timer" style="color: red; font-weight: bold; text-align: right;">Vaqt: 40:00</div>
+        <h3 id="question-text">Savollar yuklanmoqda...</h3>
+        <div id="options-container"></div>
+        <button id="next-btn" onclick="nextQuestion()" style="margin-top: 15px;">Keyingi savol</button>
+    </div>
 
     <div id="admin-panel" class="admin-section hidden">
         <h3>Admin: Savol qo'shish</h3>
@@ -121,13 +130,9 @@
         <input type="text" id="wrong3" placeholder="Xato javob 3">
         <button onclick="addQuestion()" style="background-color: #28a745;">Bazaga qo'shish</button>
     </div>
-    <div id="admin-results" class="hidden" style="margin-top: 20px;">
-    <h3 style="text-align: center;">Talabalar natijalari</h3>
-    <div id="results-table-container"></div>
-</div>
 </div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
-

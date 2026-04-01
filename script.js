@@ -1,17 +1,3 @@
-// URL'da ?admin=true borligini tekshirish
-const urlParams = new URLSearchParams(window.location.search);
-const isAdmin = urlParams.get('admin') === 'true';
-
-// Agar admin bo'lsa, natijalarni va savol qo'shish panelini ko'rsatish
-if (isAdmin) {
-    document.getElementById('admin-results').classList.remove('hidden');
-    // Agar savol qo'shish paneli bo'lsa, uni ham ko'rsatish:
-    const adminPanel = document.getElementById('admin-panel');
-    if(adminPanel) adminPanel.classList.remove('hidden');
-    
-    // Natijalarni yuklash funksiyasini chaqirish
-    showResultsInTable();
-}
 // Firebase sozlamalari
 const firebaseConfig = {
     apiKey: "AIzaSyDJpXA9mnax_DVAT5gIRQNrAFHswvaWQB4",
@@ -43,7 +29,6 @@ window.addEventListener('load', () => {
         `;
     }
 });
-
 
 // Admin panelni tekshirish
 if(window.location.search.includes('admin=true')) {
@@ -175,17 +160,31 @@ function finishTest() {
         </div>
     `;
 }
-// Barcha natijalarni jadval ko'rinishida ko'rish funksiyasi
-function logResults() {
-    database.ref('results').once('value', (snapshot) => {
+
+// Natijalarni konsolda ko'rish uchun (shunchaki tekshirish uchun)
+database.ref('results').on('value', (snapshot) => {
+    console.log("Barcha natijalar:", snapshot.val());
+});
+
+function showResults() {
+    database.ref('results').on('value', (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            console.table(data); // Brauzer konsolida chiroyli jadval chiqaradi
-        } else {
-            console.log("Hozircha natijalar yo'q.");
+        let html = "<h3>Talabalar natijalari</h3><table border='1'><tr><th>Ism</th><th>Guruh</th><th>Ball</th><th>Sana</th></tr>";
+        
+        for(let key in data) {
+            let res = data[key];
+            html += `<tr>
+                <td>${res.student}</td>
+                <td>${res.group}</td>
+                <td>${res.score}/${res.total}</td>
+                <td>${res.date}</td>
+            </tr>`;
         }
+        html += "</table>";
+        document.getElementById('admin-results').innerHTML = html;
     });
 }
+
 function showResultsInTable() {
     const container = document.getElementById('results-table-container');
     document.getElementById('admin-results').classList.remove('hidden');
@@ -230,6 +229,3 @@ function showResultsInTable() {
         container.innerHTML = html;
     });
 }
-
-// Sahifa yuklanganda natijalarni tekshirish
-showResultsInTable();
