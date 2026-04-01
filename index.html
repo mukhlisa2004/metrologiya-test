@@ -106,7 +106,24 @@
         <div id="options-container"></div>
         <button id="next-btn" onclick="nextQuestion()" class="hidden" style="margin-top: 15px;">Keyingi savol</button>
     </div>
+    
+    <div id="admin-panel" class="hidden">
+        <hr>
+        <h3 style="margin-top: 20px;">Admin: Savol qo'shish</h3>
+        <input type="text" id="newQ" placeholder="Savol matni">
+        <input type="text" id="correctA" placeholder="To'g'ri javob">
+        <input type="text" id="wrong1" placeholder="Xato javob 1">
+        <input type="text" id="wrong2" placeholder="Xato javob 2">
+        <input type="text" id="wrong3" placeholder="Xato javob 3">
+        <button onclick="addQuestion()" style="background-color: #28a745; color: white;">Bazaga qo'shish</button>
+        
+        <div id="admin-results" style="margin-top: 30px;">
+            <h3 style="text-align: center;">Talabalar natijalari</h3>
+            <div id="results-table-container"></div>
+        </div>
+    </div>
 </div>
+
         <button onclick="startTest()">Testni boshlash</button>
         <div id="admin-results" class="hidden" style="margin-top: 20px;">
     <h3 style="text-align: center;">Talabalar natijalari</h3>

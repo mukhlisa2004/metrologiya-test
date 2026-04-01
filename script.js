@@ -229,3 +229,16 @@ function showResultsInTable() {
         container.innerHTML = html;
     });
 }
+
+// Admin panelni tekshirish qismini yangilaymiz
+if(window.location.search.includes('admin=true')) {
+    const adminPanel = document.getElementById('admin-panel');
+    if(adminPanel) {
+        adminPanel.classList.remove('hidden');
+        // Admin panel ochilishi bilan natijalarni yuklash
+        showResultsInTable(); 
+    }
+}
+
+// showResultsInTable funksiyasi o'z holicha qoladi, 
+// u avtomatik "results-table-container" ichiga jadvallarni chizib beradi.
