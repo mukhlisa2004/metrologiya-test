@@ -76,10 +76,12 @@
         background-color: #f8f9fa;
     }
 
+
     /* Yashirin bloklar uchun */
-    .hidden {
-        display: none;
-    }
+.hidden {
+    display: none !important;
+}
+
 </style>
 </head>
 <body>
@@ -100,12 +102,14 @@
         <button onclick="startTest()" style="background-color: #007bff; color: white; font-weight: bold;">Testni boshlash</button>
     </div>
 
-    <div id="test-section" class="hidden">
-        <div id="timer" style="color: red; font-weight: bold; text-align: right;">Vaqt: 40:00</div>
-        <h3 id="question-text">Savollar yuklanmoqda...</h3>
-        <div id="options-container"></div>
-        <button id="next-btn" onclick="nextQuestion()" class="hidden" style="margin-top: 15px;">Keyingi savol</button>
+    <div id="admin-results" class="card hidden">
+    <h3>Talabalar natijalari</h3>
+    <div id="results-table-container">
+        Hozircha natija yo'q.
     </div>
+</div>
+    
+</div>
 </div>
 
     <div id="admin-panel" class="admin-section hidden">

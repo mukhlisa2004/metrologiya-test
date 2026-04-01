@@ -1,3 +1,17 @@
+// URL'da ?admin=true borligini tekshirish
+const urlParams = new URLSearchParams(window.location.search);
+const isAdmin = urlParams.get('admin') === 'true';
+
+// Agar admin bo'lsa, natijalarni va savol qo'shish panelini ko'rsatish
+if (isAdmin) {
+    document.getElementById('admin-results').classList.remove('hidden');
+    // Agar savol qo'shish paneli bo'lsa, uni ham ko'rsatish:
+    const adminPanel = document.getElementById('admin-panel');
+    if(adminPanel) adminPanel.classList.remove('hidden');
+    
+    // Natijalarni yuklash funksiyasini chaqirish
+    showResultsInTable();
+}
 // Firebase sozlamalari
 const firebaseConfig = {
     apiKey: "AIzaSyDJpXA9mnax_DVAT5gIRQNrAFHswvaWQB4",
