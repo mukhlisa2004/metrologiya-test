@@ -51,22 +51,11 @@ function shuffle(array) {
     return array;
 }
 
-// Testni boshlash (ASOSIY XATO SHU YERDA TO'G'RILANDI)
 function startTest() {
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     
     if(!name || !group) return alert("Ism va guruhni kiriting!");
-
-    // ANTI-CHEAT
-    window.onblur = function() {
-        if (!document.getElementById('test-section').classList.contains('hidden')) {
-            alert("DIQQAT! Siz test sahifasidan chiqdingiz. Qoidalarni buzganingiz uchun test yakunlandi!");
-            finishTest();
-        }
-    };
-    document.oncontextmenu = () => false;
-    document.oncopy = () => false;
 
     // Bazadan o'qish
     database.ref('/').once('value', (snapshot) => {
@@ -74,11 +63,12 @@ function startTest() {
         if(data) {
             let filteredQuestions = [];
             
-            // XATO TO'G'RILANDI: Endi kalit qanday bo'lishidan qat'i nazar (0, 1, q1...), 
-            // ichida 'question' degan so'z bo'lsa uni savol deb qabul qilamiz.
             Object.keys(data).forEach(key => {
-                if(data[key] && data[key].question) {
-                    filteredQuestions.push(data[key]);
+                const item = data[key];
+                // ID nima bo'lishidan qat'i nazar (q1 yoki push ID), 
+                // ichida savol matni bo'lsa uni olamiz
+                if(item && (item.question || item.text)) {
+                    filteredQuestions.push(item);
                 }
             });
 
@@ -88,16 +78,13 @@ function startTest() {
                 document.getElementById('test-section').classList.remove('hidden');
                 
                 displayQuestion();
-                runTimer(40); // 40 daqiqa
+                runTimer(40); 
             } else {
-                alert("Bazada savollar topilmadi!");
+                alert("Bazada yaroqli savollar topilmadi!");
             }
-        } else {
-            alert("Ma'lumotlar bazasi mutlaqo bo'sh!");
         }
     });
 }
-
 // Taymer
 function runTimer(minutes) {
     let seconds = minutes * 60;
@@ -123,26 +110,39 @@ function runTimer(minutes) {
 // Savolni ekranga chiqarish (JSON dagi tuzilishga moslandi)
 function displayQuestion() {
     const q = allQuestions[currentQuestionIndex];
-    document.getElementById('question-text').innerText = `${currentQuestionIndex + 1}. ${q.question}`;
     
-    // JSON fayldagi 'wrongs' massivini olamiz
-    let wrongAnswers = q.wrongs || [];
-    let options = shuffle([q.correct, ...wrongAnswers]);
+    // Savol matnini aniqlash (ham 'question', ham 'text' maydonini tekshiramiz)
+    const questionText = q.question || q.text;
+    document.getElementById('question-text').innerText = `${currentQuestionIndex + 1}. ${questionText}`;
+    
+    // Javoblarni yig'ish
+    let options = [];
+    options.push(q.correct); // To'g'ri javob doim bor
+
+    // Xato javoblarni tekshirish (wrongs massivi yoki w1, w2, w3)
+    if (q.wrongs && Array.isArray(q.wrongs)) {
+        options.push(...q.wrongs);
+    } else {
+        if (q.w1) options.push(q.w1);
+        if (q.w2) options.push(q.w2);
+        if (q.w3) options.push(q.w3);
+    }
+    
+    // Javoblarni aralashtirish
+    options = shuffle(options.filter(opt => opt)); // Bo'sh javoblarni olib tashlaymiz
     
     const container = document.getElementById('options-container');
     container.innerHTML = '';
 
     options.forEach(opt => {
-        if(opt) {
-            const btn = document.createElement('button');
-            btn.innerText = opt;
-            btn.className = "test-option-btn"; 
-            btn.onclick = () => {
-                if(opt === q.correct) score++;
-                nextQuestion();
-            };
-            container.appendChild(btn);
-        }
+        const btn = document.createElement('button');
+        btn.innerText = opt;
+        btn.className = "test-option-btn"; 
+        btn.onclick = () => {
+            if(opt === q.correct) score++;
+            nextQuestion();
+        };
+        container.appendChild(btn);
     });
 }
 
