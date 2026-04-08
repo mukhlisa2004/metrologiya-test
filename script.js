@@ -16,27 +16,33 @@ const database = firebase.database();
 let allQuestions = [];
 let currentQuestionIndex = 0;
 let score = 0;
-let timer;
+let timerInterval; // Taymer uchun global o'zgaruvchi
 
-
+// Sahifa yuklanganda test holatini tekshirish
 window.addEventListener('load', () => {
     if (localStorage.getItem('testDone') === 'true') {
-        document.getElementById('login-form').innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <h3 style="color: #e74c3c;">Siz allaqachon test topshirgansiz!</h3>
-                <p>Qayta topshirishga ruxsat berilmaydi.</p>
-            </div>
-        `;
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <h3 style="color: #e74c3c;">Siz allaqachon test topshirgansiz!</h3>
+                    <p>Qayta topshirishga ruxsat berilmaydi.</p>
+                </div>
+            `;
+        }
     }
 });
 
 // Admin panelni tekshirish
 if(window.location.search.includes('admin=true')) {
     const adminPanel = document.getElementById('admin-panel');
-    if(adminPanel) adminPanel.classList.remove('hidden');
+    if(adminPanel) {
+        adminPanel.classList.remove('hidden');
+        showResultsInTable(); 
+    }
 }
 
-// Savollarni aralashtirish funksiyasi
+// Savollarni aralashtirish
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -45,67 +51,98 @@ function shuffle(array) {
     return array;
 }
 
-// Savol qo'shish (Admin uchun)
-function addQuestion() {
-    const q = document.getElementById('newQ').value;
-    const c = document.getElementById('correctA').value;
-    const w1 = document.getElementById('wrong1').value;
-    const w2 = document.getElementById('wrong2').value;
-    const w3 = document.getElementById('wrong3').value;
-
-    if(q && c && w1) {
-        database.ref('questions').push({
-            question: q,
-            correct: c,
-            wrongs: [w1, w2, w3]
-        }).then(() => {
-            alert("Savol qo'shildi!");
-            document.querySelectorAll('#admin-panel input').forEach(i => i.value = '');
-        });
-    } else {
-        alert("Ma'lumotlarni to'liq kiriting!");
-    }
-}
-
-// Testni boshlash
+// Testni boshlash (ASOSIY XATO SHU YERDA TO'G'RILANDI)
 function startTest() {
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     
     if(!name || !group) return alert("Ism va guruhni kiriting!");
 
-    database.ref('questions').once('value', (snapshot) => {
+    // ANTI-CHEAT
+    window.onblur = function() {
+        if (!document.getElementById('test-section').classList.contains('hidden')) {
+            alert("DIQQAT! Siz test sahifasidan chiqdingiz. Qoidalarni buzganingiz uchun test yakunlandi!");
+            finishTest();
+        }
+    };
+    document.oncontextmenu = () => false;
+    document.oncopy = () => false;
+
+    // Bazadan o'qish
+    database.ref('/').once('value', (snapshot) => {
         const data = snapshot.val();
         if(data) {
-            allQuestions = shuffle(Object.values(data));
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('test-section').classList.remove('hidden');
-            displayQuestion();
-            runTimer(40);
+            let filteredQuestions = [];
+            
+            // XATO TO'G'RILANDI: Endi kalit qanday bo'lishidan qat'i nazar (0, 1, q1...), 
+            // ichida 'question' degan so'z bo'lsa uni savol deb qabul qilamiz.
+            Object.keys(data).forEach(key => {
+                if(data[key] && data[key].question) {
+                    filteredQuestions.push(data[key]);
+                }
+            });
+
+            if(filteredQuestions.length > 0) {
+                allQuestions = shuffle(filteredQuestions);
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('test-section').classList.remove('hidden');
+                
+                displayQuestion();
+                runTimer(40); // 40 daqiqa
+            } else {
+                alert("Bazada savollar topilmadi!");
+            }
         } else {
-            alert("Bazada savollar yo'q!");
+            alert("Ma'lumotlar bazasi mutlaqo bo'sh!");
         }
     });
 }
 
-// Savolni ekranga chiqarish
+// Taymer
+function runTimer(minutes) {
+    let seconds = minutes * 60;
+    const timerDisplay = document.getElementById('timer');
+
+    timerInterval = setInterval(() => {
+        let m = Math.floor(seconds / 60);
+        let s = seconds % 60;
+        
+        if (timerDisplay) {
+            timerDisplay.innerText = `Vaqt: ${m}:${s < 10 ? '0'+s : s}`;
+        }
+
+        if (seconds <= 0) {
+            clearInterval(timerInterval);
+            alert("Vaqtingiz tugadi!");
+            finishTest();
+        }
+        seconds--;
+    }, 1000);
+}
+
+// Savolni ekranga chiqarish (JSON dagi tuzilishga moslandi)
 function displayQuestion() {
     const q = allQuestions[currentQuestionIndex];
     document.getElementById('question-text').innerText = `${currentQuestionIndex + 1}. ${q.question}`;
     
-    let options = shuffle([q.correct, ...q.wrongs]);
+    // JSON fayldagi 'wrongs' massivini olamiz
+    let wrongAnswers = q.wrongs || [];
+    let options = shuffle([q.correct, ...wrongAnswers]);
+    
     const container = document.getElementById('options-container');
     container.innerHTML = '';
 
     options.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.innerText = opt;
-        btn.className = "test-option-btn"; // Stil berish uchun
-        btn.onclick = () => {
-            if(opt === q.correct) score++;
-            nextQuestion();
-        };
-        container.appendChild(btn);
+        if(opt) {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.className = "test-option-btn"; 
+            btn.onclick = () => {
+                if(opt === q.correct) score++;
+                nextQuestion();
+            };
+            container.appendChild(btn);
+        }
     });
 }
 
@@ -118,26 +155,12 @@ function nextQuestion() {
     }
 }
 
-function runTimer(minutes) {
-    let seconds = minutes * 60;
-    timer = setInterval(() => {
-        let m = Math.floor(seconds / 60);
-        let s = seconds % 60;
-        document.getElementById('timer').innerText = `Vaqt: ${m}:${s < 10 ? '0'+s : s}`;
-        if (seconds <= 0) {
-            clearInterval(timer);
-            finishTest();
-        }
-        seconds--;
-    }, 1000);
-}
-
+// Testni yakunlash va bazaga yozish
 function finishTest() {
-    clearInterval(timer);
+    clearInterval(timerInterval);
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
 
-    // Natijani bazaga saqlash
     database.ref('results').push({
         student: name,
         group: group,
@@ -146,10 +169,8 @@ function finishTest() {
         date: new Date().toLocaleString()
     });
 
-    // BRAUZERGA BELGI QO'YISH: Talaba testni tugatdi
     localStorage.setItem('testDone', 'true');
 
-    // Ekranda faqat natijani ko'rsatish (tugmasiz)
     document.getElementById('test-section').innerHTML = `
         <div style="text-align:center; padding: 30px;">
             <h2 style="color: #2c3e50;">Test yakunlandi!</h2>
@@ -161,33 +182,10 @@ function finishTest() {
     `;
 }
 
-// Natijalarni konsolda ko'rish uchun (shunchaki tekshirish uchun)
-database.ref('results').on('value', (snapshot) => {
-    console.log("Barcha natijalar:", snapshot.val());
-});
-
-function showResults() {
-    database.ref('results').on('value', (snapshot) => {
-        const data = snapshot.val();
-        let html = "<h3>Talabalar natijalari</h3><table border='1'><tr><th>Ism</th><th>Guruh</th><th>Ball</th><th>Sana</th></tr>";
-        
-        for(let key in data) {
-            let res = data[key];
-            html += `<tr>
-                <td>${res.student}</td>
-                <td>${res.group}</td>
-                <td>${res.score}/${res.total}</td>
-                <td>${res.date}</td>
-            </tr>`;
-        }
-        html += "</table>";
-        document.getElementById('admin-results').innerHTML = html;
-    });
-}
-
+// Admin panelda natijalarni ko'rsatish
 function showResultsInTable() {
     const container = document.getElementById('results-table-container');
-    document.getElementById('admin-results').classList.remove('hidden');
+    if(!container) return;
 
     database.ref('results').on('value', (snapshot) => {
         const data = snapshot.val();
@@ -207,15 +205,13 @@ function showResultsInTable() {
                 <table border="1" style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
                     <tr style="background:#f8f9fa;">
                         <th>Ism</th>
-                        <th>To'g'ri javoblar</th>
-                        <th>To'plangan ball</th>
+                        <th>To'g'ri/Umumiy</th>
+                        <th>Ball (x0.5)</th>
                         <th>Sana</th>
                     </tr>`;
             
             grouped[gName].forEach(r => {
-                // Ballni hisoblash: to'g'ri javoblar soni * 0.5
                 let totalBall = (r.score * 0.5).toFixed(1); 
-                
                 html += `
                     <tr>
                         <td style="padding:10px;">${r.student}</td>
@@ -230,15 +226,24 @@ function showResultsInTable() {
     });
 }
 
-// Admin panelni tekshirish qismini yangilaymiz
-if(window.location.search.includes('admin=true')) {
-    const adminPanel = document.getElementById('admin-panel');
-    if(adminPanel) {
-        adminPanel.classList.remove('hidden');
-        // Admin panel ochilishi bilan natijalarni yuklash
-        showResultsInTable(); 
+// Admindan savol qo'shish qismi ham bazaning joriy tuzilishiga moslandi
+function addQuestion() {
+    const q = document.getElementById('newQ').value;
+    const c = document.getElementById('correctA').value;
+    const w1 = document.getElementById('wrong1').value;
+    const w2 = document.getElementById('wrong2').value;
+    const w3 = document.getElementById('wrong3').value;
+
+    if(q && c && w1) {
+        database.ref('/').push({
+            question: q,
+            correct: c,
+            wrongs: [w1, w2, w3]
+        }).then(() => {
+            alert("Savol qo'shildi!");
+            document.querySelectorAll('#admin-panel input').forEach(i => i.value = '');
+        });
+    } else {
+        alert("Ma'lumotlarni to'liq kiriting!");
     }
 }
-
-// showResultsInTable funksiyasi o'z holicha qoladi, 
-// u avtomatik "results-table-container" ichiga jadvallarni chizib beradi.
