@@ -57,7 +57,14 @@ function startTest() {
     
     if(!name || !group) return alert("Ism va guruhni kiriting!");
 
-    // Bazadan o'qish
+    // ANTI-CHEAT
+    window.onblur = function() {
+        if (!document.getElementById('test-section').classList.contains('hidden')) {
+            alert("DIQQAT! Siz test sahifasidan chiqdingiz. Qoidalarni buzganingiz uchun test yakunlandi!");
+            finishTest();
+        }
+    };
+
     database.ref('/').once('value', (snapshot) => {
         const data = snapshot.val();
         if(data) {
@@ -65,22 +72,28 @@ function startTest() {
             
             Object.keys(data).forEach(key => {
                 const item = data[key];
-                // ID nima bo'lishidan qat'i nazar (q1 yoki push ID), 
-                // ichida savol matni bo'lsa uni olamiz
-                if(item && (item.question || item.text)) {
+                if(key !== 'results' && item && (item.text || item.question)) {
                     filteredQuestions.push(item);
                 }
             });
 
             if(filteredQuestions.length > 0) {
-                allQuestions = shuffle(filteredQuestions);
+                // 1. Avval barcha savollarni aralashtiramiz
+                let shuffled = shuffle(filteredQuestions);
+                
+                // 2. Aralashgan savollardan faqat dastlabki 20 tasini kesib olamiz
+                allQuestions = shuffled.slice(0, 20); 
+
                 document.getElementById('login-form').classList.add('hidden');
                 document.getElementById('test-section').classList.remove('hidden');
+                
+                currentQuestionIndex = 0; // Indexni nollaymiz
+                score = 0; // Ballni nollaymiz
                 
                 displayQuestion();
                 runTimer(40); 
             } else {
-                alert("Bazada yaroqli savollar topilmadi!");
+                alert("Bazada savollar topilmadi!");
             }
         }
     });
