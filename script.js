@@ -170,75 +170,110 @@ function nextQuestion() {
 
 // Testni yakunlash va bazaga yozish
 function finishTest() {
-    clearInterval(timerInterval);
+    clearInterval(timerInterval); // Vaqtni to'xtatish
+
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
+    const date = new Date().toLocaleString();
 
-    database.ref('results').push({
+    // Natija ob'ekti
+    const resultData = {
         student: name,
         group: group,
-        score: score,
-        total: allQuestions.length,
-        date: new Date().toLocaleString()
-    });
+        score: score, // To'g'ri javoblar soni
+        total: allQuestions.length, // Jami savollar soni (20 ta)
+        date: date
+    };
 
-    localStorage.setItem('testDone', 'true');
+    // --- DIQQAT: Firebase bazasiga 'results' papkasiga yozish ---
+    database.ref('results').push(resultData)
+        .then(() => {
+            console.log("Natija muvaffaqiyatli saqlandi!");
+            localStorage.setItem('testDone', 'true'); // Qayta topshirmaslik uchun
 
-    document.getElementById('test-section').innerHTML = `
-        <div style="text-align:center; padding: 30px;">
-            <h2 style="color: #2c3e50;">Test yakunlandi!</h2>
-            <p style="font-size: 22px;">${name}, natijangiz: <br>
-               <span style="font-weight: bold; color: #27ae60; font-size: 32px;">${score} / ${allQuestions.length}</span>
-            </p>
-            <p style="color: #7f8c8d; margin-top: 20px;">Ma'lumotlaringiz bazaga saqlandi.</p>
-        </div>
-    `;
+            // Ekran ko'rinishini yangilash
+            document.getElementById('test-section').classList.add('hidden');
+            const loginForm = document.getElementById('login-form');
+            loginForm.classList.remove('hidden');
+            
+            loginForm.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <h2 style="color: #2ecc71;">Test yakunlandi!</h2>
+                    <p><b>Talaba:</b> ${name}</p>
+                    <p><b>Guruh:</b> ${group}</p>
+                    <p><b>To'g'ri javoblar:</b> ${score} / ${allQuestions.length}</p>
+                    <p style="font-size: 1.2em; color: #3498db;"><b>Umumiy ball: ${(score * 0.5).toFixed(1)}</b></p>
+                    <p style="color: #666; font-size: 0.9em;">Natijalaringiz tizimga saqlandi.</p>
+                </div>
+            `;
+        })
+        .catch((error) => {
+            alert("Natijani saqlashda xato yuz berdi: " + error.message);
+        });
 }
 
 // Admin panelda natijalarni ko'rsatish
 function showResultsInTable() {
     const container = document.getElementById('results-table-container');
-    if(!container) return;
+    if (!container) return;
 
     database.ref('results').on('value', (snapshot) => {
         const data = snapshot.val();
-        if(!data) return container.innerHTML = "<p>Hozircha natija yo'q.</p>";
-
-        const grouped = {};
-        for(let key in data) {
-            const res = data[key];
-            if(!grouped[res.group]) grouped[res.group] = [];
-            grouped[res.group].push(res);
+        if (!data) {
+            container.innerHTML = "<p style='text-align:center;'>Hozircha natijalar yo'q.</p>";
+            return;
         }
 
-        let html = "<h3>Talabalar natijalari</h3>";
-        for(let gName in grouped) {
-            html += `
-                <h4 style="background:#007bff; color:white; padding:10px; border-radius:5px;">${gName} guruhi</h4>
-                <table border="1" style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr style="background:#f8f9fa;">
-                        <th>Ism</th>
-                        <th>To'g'ri/Umumiy</th>
-                        <th>Ball (x0.5)</th>
-                        <th>Sana</th>
-                    </tr>`;
+        // Ma'lumotlarni guruhlarga ajratish
+        const groups = {};
+        Object.values(data).forEach(res => {
+            if (!groups[res.group]) groups[res.group] = [];
+            groups[res.group].push(res);
+        });
+
+        let html = "";
+        for (const groupName in groups) {
             
-            grouped[gName].forEach(r => {
-                let totalBall = (r.score * 0.5).toFixed(1); 
+            // --- O'ZGARTIRILGAN QISM: Ism bo'yicha alfavit tartibida saralash ---
+            groups[groupName].sort((a, b) => a.student.localeCompare(b.student));
+
+            html += `
+                <div class="group-section" style="margin-bottom: 30px;">
+                    <h4 style="background: #3498db; color: white; padding: 12px; border-radius: 8px 8px 0 0; margin-bottom: 0;">
+                        Guruh: ${groupName}
+                    </h4>
+                    <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; background: white; border: 1px solid #ddd;">
+                        <thead style="background: #f8f9fa;">
+                            <tr>
+                                <th style="padding: 10px; border: 1px solid #ddd;">F.I.SH (Alfavit tartibida)</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">To'g'ri</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Jami</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; background: #d4edda;">Ball (x0.5)</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Sana</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            groups[groupName].forEach(r => {
+                const calculatedBall = (r.score * 0.5).toFixed(1);
+                
                 html += `
                     <tr>
-                        <td style="padding:10px;">${r.student}</td>
-                        <td style="padding:10px; text-align:center;">${r.score} / ${r.total}</td>
-                        <td style="padding:10px; text-align:center; font-weight:bold; color: #2ecc71;">${totalBall} ball</td>
-                        <td style="padding:10px; font-size:12px;">${r.date}</td>
-                    </tr>`;
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: left; padding-left: 15px;">${r.student}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; color: #27ae60; font-weight: bold;">${r.score}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calculatedBall}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px; color: #7f8c8d;">${r.date}</td>
+                    </tr>
+                `;
             });
-            html += "</table>";
+
+            html += `</tbody></table></div>`;
         }
         container.innerHTML = html;
     });
 }
-
 // Admindan savol qo'shish qismi ham bazaning joriy tuzilishiga moslandi
 function addQuestion() {
     const q = document.getElementById('newQ').value;
@@ -259,4 +294,13 @@ function addQuestion() {
     } else {
         alert("Ma'lumotlarni to'liq kiriting!");
     }
+}
+
+
+// script.js ning eng pastki qismiga qo'shing
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('admin') === 'true') {
+    document.getElementById('admin-panel').classList.remove('hidden');
+    document.getElementById('login-form').classList.add('hidden');
+    showResultsInTable(); // <--- BU FUNKSIYA JADVALNI CHIZADI
 }
