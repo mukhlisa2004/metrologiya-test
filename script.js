@@ -137,42 +137,48 @@ function nextQuestion() {
     }
 }
 
-function finishTest() {
+async function finishTest() {
     clearInterval(timerInterval);
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     const date = new Date().toLocaleString();
     
-    // Qurilma modelini aniqlash mantiqi
+    // 1. Qurilma nomini aniqlash (Kompyuter yoki Telefon modeli)
     let deviceModel = "Noma'lum qurilma";
     const ua = navigator.userAgent;
 
     if (/android/i.test(ua)) {
-        // Android qurilmalarda model nomi odatda "Android...; Model Build/..." formatida bo'ladi
         const androidMatch = ua.match(/Android.*;\s([^;]+)\sBuild/);
-        if (androidMatch) {
-            deviceModel = androidMatch[1];
-        } else {
-            deviceModel = "Android";
-        }
+        deviceModel = androidMatch ? androidMatch[1] : "Android";
     } else if (/iPhone|iPad|iPod/i.test(ua)) {
-        // iOS qurilmalari aniq modelni yashiradi, lekin turini aniqlash mumkin
-        if (/iPhone/i.test(ua)) deviceModel = "iPhone";
-        else if (/iPad/i.test(ua)) deviceModel = "iPad";
-        else deviceModel = "iOS qurilma";
+        deviceModel = /iPhone/i.test(ua) ? "iPhone" : "iPad";
     } else if (/Windows/i.test(ua)) {
-        deviceModel = "Windows PC";
+        // Windows versiyasini aniqlash
+        const winMatch = ua.match(/Windows NT ([\d.]+)/);
+        deviceModel = winMatch ? `Windows PC (v${winMatch[1]})` : "Windows PC";
     } else if (/Macintosh/i.test(ua)) {
-        deviceModel = "MacBook";
+        deviceModel = "MacBook / iMac";
     }
 
+    // 2. IP manzilni aniqlash (Tashqi API orqali)
+    let userIp = "Aniqlanmadi";
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        userIp = data.ip;
+    } catch (error) {
+        console.error("IP aniqlashda xato:", error);
+    }
+
+    // 3. Ma'lumotlarni bazaga yuborish
     const resultData = {
         student: name,
         group: group,
         score: score,
         total: allQuestions.length,
         date: date,
-        device: deviceModel // Endi bu yerda qurilma modeli saqlanadi
+        device: deviceModel,
+        ip: userIp // IP manzil qo'shildi
     };
 
     database.ref('results').push(resultData).then(() => {
@@ -184,11 +190,10 @@ function finishTest() {
             <div style="text-align:center; padding: 20px;">
                 <h2 style="color: #2ecc71;">Test yakunlandi!</h2>
                 <p><b>Talaba:</b> ${name}</p>
-                <p><b>Guruh:</b> ${group}</p>
                 <p><b>To'g'ri:</b> ${score} / ${allQuestions.length}</p>
-                <p style="font-size: 1.2em; color: #3498db;"><b>Ball: ${(score * 0.5).toFixed(1)}</b></p>
-                <p style="color: #666;">Natijalar saqlandi.</p>
-                <p style="font-size: 0.8em; color: #999;">Qurilma: ${deviceModel}</p>
+                <p><b>Qurilma:</b> ${deviceModel}</p>
+                <p><b>IP:</b> ${userIp}</p>
+                <p style="color: #666; margin-top:10px;">Natijalar saqlandi.</p>
             </div>
         `;
     }).catch(e => alert("Xato: " + e.message));
@@ -229,6 +234,7 @@ function showResultsInTable() {
                                 <th style="padding: 10px; border: 1px solid #ddd;">Jami</th>
                                 <th style="padding: 10px; border: 1px solid #ddd; background: #d4edda;">Ball (x0.5)</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">Qurilma</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">IP Manzil</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">Sana</th>
                             </tr>
                         </thead>
@@ -237,9 +243,8 @@ function showResultsInTable() {
 
             groups[groupName].forEach(r => {
                 const calcBall = (r.score * 0.5).toFixed(1);
-                
-                // YANGILANGAN QISM: Agar device ma'lumoti bo'lsa uni ko'rsatadi, aks holda "Noma'lum"
                 const deviceDisplayName = r.device ? r.device : "Noma'lum";
+                const ipAddress = r.ip ? r.ip : "---"; // IP manzilni chiqarish
 
                 html += `
                     <tr>
@@ -248,6 +253,7 @@ function showResultsInTable() {
                         <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calcBall}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #e67e22;">${deviceDisplayName}</td> 
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #7f8c8d;">${ipAddress}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px;">${r.date}</td>
                     </tr>
                 `;
@@ -257,6 +263,8 @@ function showResultsInTable() {
         container.innerHTML = html;
     });
 }
+
+
 
 function addQuestion() {
     const q = document.getElementById('newQ').value;
