@@ -142,7 +142,29 @@ function finishTest() {
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     const date = new Date().toLocaleString();
-    const device = navigator.userAgent;
+    
+    // Qurilma modelini aniqlash mantiqi
+    let deviceModel = "Noma'lum qurilma";
+    const ua = navigator.userAgent;
+
+    if (/android/i.test(ua)) {
+        // Android qurilmalarda model nomi odatda "Android...; Model Build/..." formatida bo'ladi
+        const androidMatch = ua.match(/Android.*;\s([^;]+)\sBuild/);
+        if (androidMatch) {
+            deviceModel = androidMatch[1];
+        } else {
+            deviceModel = "Android";
+        }
+    } else if (/iPhone|iPad|iPod/i.test(ua)) {
+        // iOS qurilmalari aniq modelni yashiradi, lekin turini aniqlash mumkin
+        if (/iPhone/i.test(ua)) deviceModel = "iPhone";
+        else if (/iPad/i.test(ua)) deviceModel = "iPad";
+        else deviceModel = "iOS qurilma";
+    } else if (/Windows/i.test(ua)) {
+        deviceModel = "Windows PC";
+    } else if (/Macintosh/i.test(ua)) {
+        deviceModel = "MacBook";
+    }
 
     const resultData = {
         student: name,
@@ -150,7 +172,7 @@ function finishTest() {
         score: score,
         total: allQuestions.length,
         date: date,
-        device: device
+        device: deviceModel // Endi bu yerda qurilma modeli saqlanadi
     };
 
     database.ref('results').push(resultData).then(() => {
@@ -166,6 +188,7 @@ function finishTest() {
                 <p><b>To'g'ri:</b> ${score} / ${allQuestions.length}</p>
                 <p style="font-size: 1.2em; color: #3498db;"><b>Ball: ${(score * 0.5).toFixed(1)}</b></p>
                 <p style="color: #666;">Natijalar saqlandi.</p>
+                <p style="font-size: 0.8em; color: #999;">Qurilma: ${deviceModel}</p>
             </div>
         `;
     }).catch(e => alert("Xato: " + e.message));
@@ -190,7 +213,7 @@ function showResultsInTable() {
 
         let html = "";
         for (const groupName in groups) {
-            // Ism bo'yicha saralash
+            // Ism bo'yicha alfavit tartibida saralash
             groups[groupName].sort((a, b) => a.student.localeCompare(b.student));
 
             html += `
@@ -214,7 +237,9 @@ function showResultsInTable() {
 
             groups[groupName].forEach(r => {
                 const calcBall = (r.score * 0.5).toFixed(1);
-                const deviceShort = r.device ? (r.device.includes("Android") ? "Android" : r.device.includes("iPhone") ? "iOS" : r.device.includes("Windows") ? "PC" : "Mobil") : "Noma'lum";
+                
+                // YANGILANGAN QISM: Agar device ma'lumoti bo'lsa uni ko'rsatadi, aks holda "Noma'lum"
+                const deviceDisplayName = r.device ? r.device : "Noma'lum";
 
                 html += `
                     <tr>
@@ -222,7 +247,7 @@ function showResultsInTable() {
                         <td style="padding: 10px; border: 1px solid #ddd;">${r.score}</td>
                         <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calcBall}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #7f8c8d;">${deviceShort}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #e67e22;">${deviceDisplayName}</td> 
                         <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px;">${r.date}</td>
                     </tr>
                 `;
@@ -261,4 +286,21 @@ if (urlParams.get('admin') === 'true') {
     if(adminPanel) adminPanel.classList.remove('hidden');
     if(loginForm) loginForm.classList.add('hidden');
     showResultsInTable();
+}
+
+
+function getDeviceModel() {
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) {
+        // Android qurilmalarda model nomi odatda qavs ichida bo'ladi
+        const match = ua.match(/Android.*;\s([^;]+)\sBuild/);
+        if (match) return match[1];
+        return "Android qurilma";
+    }
+    if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+        return "iOS qurilma"; // iOS xavfsizlik sababli model nomini (masalan, iPhone 13) yashiradi
+    }
+    if (/Windows/i.test(ua)) return "Windows PC";
+    if (/Macintosh/i.test(ua)) return "MacBook";
+    return "Noma'lum qurilma";
 }
