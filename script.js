@@ -33,7 +33,6 @@ window.addEventListener('load', () => {
     }
 });
 
-// Savollarni aralashtirish
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -138,14 +137,11 @@ function nextQuestion() {
     }
 }
 
-// YANGILANGAN: Testni yakunlash (Qurilma ma'lumoti qo'shildi)
 function finishTest() {
     clearInterval(timerInterval);
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     const date = new Date().toLocaleString();
-    
-    // Qurilmani aniqlash
     const device = navigator.userAgent;
 
     const resultData = {
@@ -154,7 +150,7 @@ function finishTest() {
         score: score,
         total: allQuestions.length,
         date: date,
-        device: device // Qurilma ma'lumoti
+        device: device
     };
 
     database.ref('results').push(resultData).then(() => {
@@ -175,7 +171,6 @@ function finishTest() {
     }).catch(e => alert("Xato: " + e.message));
 }
 
-// YANGILANGAN: Admin panel (Ism bo'yicha saralash va Qurilmani ko'rsatish)
 function showResultsInTable() {
     const container = document.getElementById('results-table-container');
     if (!container) return;
@@ -195,7 +190,7 @@ function showResultsInTable() {
 
         let html = "";
         for (const groupName in groups) {
-            // Ism-familiya bo'yicha alfavit tartibida saralash
+            // Ism bo'yicha saralash
             groups[groupName].sort((a, b) => a.student.localeCompare(b.student));
 
             html += `
@@ -203,13 +198,15 @@ function showResultsInTable() {
                     <h4 style="background: #3498db; color: white; padding: 12px; margin-bottom: 0; border-radius: 8px 8px 0 0;">
                         Guruh: ${groupName}
                     </h4>
-                    <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">
+                    <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 13px;">
                         <thead style="background: #f8f9fa;">
                             <tr>
-                                <th style="padding: 10px;">F.I.SH</th>
-                                <th style="padding: 10px;">Ball (x0.5)</th>
-                                <th style="padding: 10px;">Qurilma</th>
-                                <th style="padding: 10px;">Sana</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">F.I.SH</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">To'g'ri</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Jami</th>
+                                <th style="padding: 10px; border: 1px solid #ddd; background: #d4edda;">Ball (x0.5)</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Qurilma</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Sana</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -217,15 +214,16 @@ function showResultsInTable() {
 
             groups[groupName].forEach(r => {
                 const calcBall = (r.score * 0.5).toFixed(1);
-                // Qurilma nomini qisqartirib ko'rsatish (to'liq matn judayam uzun bo'ladi)
-                const deviceShort = r.device ? (r.device.includes("Android") ? "Android" : r.device.includes("iPhone") ? "iPhone/iOS" : r.device.includes("Windows") ? "Windows PC" : "Boshqa") : "Noma'lum";
+                const deviceShort = r.device ? (r.device.includes("Android") ? "Android" : r.device.includes("iPhone") ? "iOS" : r.device.includes("Windows") ? "PC" : "Mobil") : "Noma'lum";
 
                 html += `
                     <tr>
-                        <td style="padding: 10px; text-align: left;">${r.student}</td>
-                        <td style="padding: 10px; font-weight: bold; color: #2980b9;">${calcBall}</td>
-                        <td style="padding: 10px; font-size: 11px; color: #7f8c8d;" title="${r.device}">${deviceShort}</td>
-                        <td style="padding: 10px; font-size: 11px;">${r.date}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: left;">${r.student}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${r.score}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calcBall}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #7f8c8d;">${deviceShort}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px;">${r.date}</td>
                     </tr>
                 `;
             });
@@ -256,7 +254,6 @@ function addQuestion() {
     }
 }
 
-// Admin panel ochilishi
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('admin') === 'true') {
     const adminPanel = document.getElementById('admin-panel');
