@@ -16,7 +16,7 @@ const database = firebase.database();
 let allQuestions = [];
 let currentQuestionIndex = 0;
 let score = 0;
-let timerInterval; // Taymer uchun global o'zgaruvchi
+let timerInterval;
 
 // Sahifa yuklanganda test holatini tekshirish
 window.addEventListener('load', () => {
@@ -33,15 +33,6 @@ window.addEventListener('load', () => {
     }
 });
 
-// Admin panelni tekshirish
-if(window.location.search.includes('admin=true')) {
-    const adminPanel = document.getElementById('admin-panel');
-    if(adminPanel) {
-        adminPanel.classList.remove('hidden');
-        showResultsInTable(); 
-    }
-}
-
 // Savollarni aralashtirish
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -57,7 +48,6 @@ function startTest() {
     
     if(!name || !group) return alert("Ism va guruhni kiriting!");
 
-    // ANTI-CHEAT
     window.onblur = function() {
         if (!document.getElementById('test-section').classList.contains('hidden')) {
             alert("DIQQAT! Siz test sahifasidan chiqdingiz. Qoidalarni buzganingiz uchun test yakunlandi!");
@@ -69,7 +59,6 @@ function startTest() {
         const data = snapshot.val();
         if(data) {
             let filteredQuestions = [];
-            
             Object.keys(data).forEach(key => {
                 const item = data[key];
                 if(key !== 'results' && item && (item.text || item.question)) {
@@ -78,18 +67,12 @@ function startTest() {
             });
 
             if(filteredQuestions.length > 0) {
-                // 1. Avval barcha savollarni aralashtiramiz
                 let shuffled = shuffle(filteredQuestions);
-                
-                // 2. Aralashgan savollardan faqat dastlabki 20 tasini kesib olamiz
                 allQuestions = shuffled.slice(0, 20); 
-
                 document.getElementById('login-form').classList.add('hidden');
                 document.getElementById('test-section').classList.remove('hidden');
-                
-                currentQuestionIndex = 0; // Indexni nollaymiz
-                score = 0; // Ballni nollaymiz
-                
+                currentQuestionIndex = 0;
+                score = 0;
                 displayQuestion();
                 runTimer(40); 
             } else {
@@ -98,19 +81,14 @@ function startTest() {
         }
     });
 }
-// Taymer
+
 function runTimer(minutes) {
     let seconds = minutes * 60;
     const timerDisplay = document.getElementById('timer');
-
     timerInterval = setInterval(() => {
         let m = Math.floor(seconds / 60);
         let s = seconds % 60;
-        
-        if (timerDisplay) {
-            timerDisplay.innerText = `Vaqt: ${m}:${s < 10 ? '0'+s : s}`;
-        }
-
+        if (timerDisplay) timerDisplay.innerText = `Vaqt: ${m}:${s < 10 ? '0'+s : s}`;
         if (seconds <= 0) {
             clearInterval(timerInterval);
             alert("Vaqtingiz tugadi!");
@@ -120,19 +98,13 @@ function runTimer(minutes) {
     }, 1000);
 }
 
-// Savolni ekranga chiqarish (JSON dagi tuzilishga moslandi)
 function displayQuestion() {
     const q = allQuestions[currentQuestionIndex];
-    
-    // Savol matnini aniqlash (ham 'question', ham 'text' maydonini tekshiramiz)
     const questionText = q.question || q.text;
     document.getElementById('question-text').innerText = `${currentQuestionIndex + 1}. ${questionText}`;
     
-    // Javoblarni yig'ish
     let options = [];
-    options.push(q.correct); // To'g'ri javob doim bor
-
-    // Xato javoblarni tekshirish (wrongs massivi yoki w1, w2, w3)
+    options.push(q.correct);
     if (q.wrongs && Array.isArray(q.wrongs)) {
         options.push(...q.wrongs);
     } else {
@@ -141,9 +113,7 @@ function displayQuestion() {
         if (q.w3) options.push(q.w3);
     }
     
-    // Javoblarni aralashtirish
-    options = shuffle(options.filter(opt => opt)); // Bo'sh javoblarni olib tashlaymiz
-    
+    options = shuffle(options.filter(opt => opt));
     const container = document.getElementById('options-container');
     container.innerHTML = '';
 
@@ -168,51 +138,44 @@ function nextQuestion() {
     }
 }
 
-// Testni yakunlash va bazaga yozish
+// YANGILANGAN: Testni yakunlash (Qurilma ma'lumoti qo'shildi)
 function finishTest() {
-    clearInterval(timerInterval); // Vaqtni to'xtatish
-
+    clearInterval(timerInterval);
     const name = document.getElementById('userName').value;
     const group = document.getElementById('userGroup').value;
     const date = new Date().toLocaleString();
+    
+    // Qurilmani aniqlash
+    const device = navigator.userAgent;
 
-    // Natija ob'ekti
     const resultData = {
         student: name,
         group: group,
-        score: score, // To'g'ri javoblar soni
-        total: allQuestions.length, // Jami savollar soni (20 ta)
-        date: date
+        score: score,
+        total: allQuestions.length,
+        date: date,
+        device: device // Qurilma ma'lumoti
     };
 
-    // --- DIQQAT: Firebase bazasiga 'results' papkasiga yozish ---
-    database.ref('results').push(resultData)
-        .then(() => {
-            console.log("Natija muvaffaqiyatli saqlandi!");
-            localStorage.setItem('testDone', 'true'); // Qayta topshirmaslik uchun
-
-            // Ekran ko'rinishini yangilash
-            document.getElementById('test-section').classList.add('hidden');
-            const loginForm = document.getElementById('login-form');
-            loginForm.classList.remove('hidden');
-            
-            loginForm.innerHTML = `
-                <div style="text-align:center; padding: 20px;">
-                    <h2 style="color: #2ecc71;">Test yakunlandi!</h2>
-                    <p><b>Talaba:</b> ${name}</p>
-                    <p><b>Guruh:</b> ${group}</p>
-                    <p><b>To'g'ri javoblar:</b> ${score} / ${allQuestions.length}</p>
-                    <p style="font-size: 1.2em; color: #3498db;"><b>Umumiy ball: ${(score * 0.5).toFixed(1)}</b></p>
-                    <p style="color: #666; font-size: 0.9em;">Natijalaringiz tizimga saqlandi.</p>
-                </div>
-            `;
-        })
-        .catch((error) => {
-            alert("Natijani saqlashda xato yuz berdi: " + error.message);
-        });
+    database.ref('results').push(resultData).then(() => {
+        localStorage.setItem('testDone', 'true');
+        document.getElementById('test-section').classList.add('hidden');
+        const loginForm = document.getElementById('login-form');
+        loginForm.classList.remove('hidden');
+        loginForm.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <h2 style="color: #2ecc71;">Test yakunlandi!</h2>
+                <p><b>Talaba:</b> ${name}</p>
+                <p><b>Guruh:</b> ${group}</p>
+                <p><b>To'g'ri:</b> ${score} / ${allQuestions.length}</p>
+                <p style="font-size: 1.2em; color: #3498db;"><b>Ball: ${(score * 0.5).toFixed(1)}</b></p>
+                <p style="color: #666;">Natijalar saqlandi.</p>
+            </div>
+        `;
+    }).catch(e => alert("Xato: " + e.message));
 }
 
-// Admin panelda natijalarni ko'rsatish
+// YANGILANGAN: Admin panel (Ism bo'yicha saralash va Qurilmani ko'rsatish)
 function showResultsInTable() {
     const container = document.getElementById('results-table-container');
     if (!container) return;
@@ -220,11 +183,10 @@ function showResultsInTable() {
     database.ref('results').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) {
-            container.innerHTML = "<p style='text-align:center;'>Hozircha natijalar yo'q.</p>";
+            container.innerHTML = "<p style='text-align:center;'>Natijalar yo'q.</p>";
             return;
         }
 
-        // Ma'lumotlarni guruhlarga ajratish
         const groups = {};
         Object.values(data).forEach(res => {
             if (!groups[res.group]) groups[res.group] = [];
@@ -233,48 +195,46 @@ function showResultsInTable() {
 
         let html = "";
         for (const groupName in groups) {
-            
-            // --- O'ZGARTIRILGAN QISM: Ism bo'yicha alfavit tartibida saralash ---
+            // Ism-familiya bo'yicha alfavit tartibida saralash
             groups[groupName].sort((a, b) => a.student.localeCompare(b.student));
 
             html += `
                 <div class="group-section" style="margin-bottom: 30px;">
-                    <h4 style="background: #3498db; color: white; padding: 12px; border-radius: 8px 8px 0 0; margin-bottom: 0;">
+                    <h4 style="background: #3498db; color: white; padding: 12px; margin-bottom: 0; border-radius: 8px 8px 0 0;">
                         Guruh: ${groupName}
                     </h4>
-                    <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; background: white; border: 1px solid #ddd;">
+                    <table border="1" style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px;">
                         <thead style="background: #f8f9fa;">
                             <tr>
-                                <th style="padding: 10px; border: 1px solid #ddd;">F.I.SH (Alfavit tartibida)</th>
-                                <th style="padding: 10px; border: 1px solid #ddd;">To'g'ri</th>
-                                <th style="padding: 10px; border: 1px solid #ddd;">Jami</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; background: #d4edda;">Ball (x0.5)</th>
-                                <th style="padding: 10px; border: 1px solid #ddd;">Sana</th>
+                                <th style="padding: 10px;">F.I.SH</th>
+                                <th style="padding: 10px;">Ball (x0.5)</th>
+                                <th style="padding: 10px;">Qurilma</th>
+                                <th style="padding: 10px;">Sana</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
 
             groups[groupName].forEach(r => {
-                const calculatedBall = (r.score * 0.5).toFixed(1);
-                
+                const calcBall = (r.score * 0.5).toFixed(1);
+                // Qurilma nomini qisqartirib ko'rsatish (to'liq matn judayam uzun bo'ladi)
+                const deviceShort = r.device ? (r.device.includes("Android") ? "Android" : r.device.includes("iPhone") ? "iPhone/iOS" : r.device.includes("Windows") ? "Windows PC" : "Boshqa") : "Noma'lum";
+
                 html += `
                     <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd; text-align: left; padding-left: 15px;">${r.student}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; color: #27ae60; font-weight: bold;">${r.score}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calculatedBall}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px; color: #7f8c8d;">${r.date}</td>
+                        <td style="padding: 10px; text-align: left;">${r.student}</td>
+                        <td style="padding: 10px; font-weight: bold; color: #2980b9;">${calcBall}</td>
+                        <td style="padding: 10px; font-size: 11px; color: #7f8c8d;" title="${r.device}">${deviceShort}</td>
+                        <td style="padding: 10px; font-size: 11px;">${r.date}</td>
                     </tr>
                 `;
             });
-
             html += `</tbody></table></div>`;
         }
         container.innerHTML = html;
     });
 }
-// Admindan savol qo'shish qismi ham bazaning joriy tuzilishiga moslandi
+
 function addQuestion() {
     const q = document.getElementById('newQ').value;
     const c = document.getElementById('correctA').value;
@@ -296,11 +256,12 @@ function addQuestion() {
     }
 }
 
-
-// script.js ning eng pastki qismiga qo'shing
+// Admin panel ochilishi
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('admin') === 'true') {
-    document.getElementById('admin-panel').classList.remove('hidden');
-    document.getElementById('login-form').classList.add('hidden');
-    showResultsInTable(); // <--- BU FUNKSIYA JADVALNI CHIZADI
+    const adminPanel = document.getElementById('admin-panel');
+    const loginForm = document.getElementById('login-form');
+    if(adminPanel) adminPanel.classList.remove('hidden');
+    if(loginForm) loginForm.classList.add('hidden');
+    showResultsInTable();
 }
