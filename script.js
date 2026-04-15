@@ -231,8 +231,7 @@ function showResultsInTable() {
                             <tr>
                                 <th style="padding: 10px; border: 1px solid #ddd;">F.I.SH</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">To'g'ri</th>
-                                <th style="padding: 10px; border: 1px solid #ddd;">Jami</th>
-                                <th style="padding: 10px; border: 1px solid #ddd; background: #d4edda;">Ball (x0.5)</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">Ball (x0.5)</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">Qurilma</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">IP Manzil</th>
                                 <th style="padding: 10px; border: 1px solid #ddd;">Sana</th>
@@ -243,16 +242,35 @@ function showResultsInTable() {
 
             groups[groupName].forEach(r => {
                 const calcBall = (r.score * 0.5).toFixed(1);
-                const deviceDisplayName = r.device ? r.device : "Noma'lum";
-                const ipAddress = r.ip ? r.ip : "---"; // IP manzilni chiqarish
+                
+                // 1. Qurilma nomini qisqartirish (Uzun UserAgent o'rniga modelni ajratib olish)
+                let dName = "Noma'lum";
+                if (r.device) {
+                    const ua = r.device;
+                    if (ua.includes("Android")) {
+                        // "Android 13; K" kabi yozuvlardan modelni ajratishga urinish
+                        const match = ua.match(/Android\s[^;]+;\s([^;)]+)/);
+                        dName = match ? match[1] : "Android";
+                    } else if (ua.includes("iPhone")) {
+                        dName = "iPhone";
+                    } else if (ua.includes("Windows")) {
+                        dName = "Windows PC";
+                    } else if (ua.includes("Macintosh")) {
+                        dName = "MacBook";
+                    } else {
+                        dName = "Mobil / PC";
+                    }
+                }
+
+                // 2. IP manzilni tekshirish
+                const ipAddress = r.ip ? r.ip : "---";
 
                 html += `
                     <tr>
                         <td style="padding: 10px; border: 1px solid #ddd; text-align: left;">${r.student}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${r.score}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${r.total}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${r.score} / ${r.total}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #2980b9;">${calcBall}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #e67e22;">${deviceDisplayName}</td> 
+                        <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #e67e22;" title="${r.device}">${dName}</td> 
                         <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px; color: #7f8c8d;">${ipAddress}</td>
                         <td style="padding: 10px; border: 1px solid #ddd; font-size: 11px;">${r.date}</td>
                     </tr>
